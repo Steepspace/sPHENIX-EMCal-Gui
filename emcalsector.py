@@ -5,9 +5,12 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 
-parser = argparse.ArgumentParser()
+# Author: Apurva Narde, UIUC
 
-parser.add_argument('-d', '--delay', type=int, default=60, help='Refresh time. Minimum 5 seconds. Default: 60 seconds.')
+parser = argparse.ArgumentParser(description='GUI to monitor the bias voltages from the EMCal.')
+
+parser.add_argument('-d', '--delay', type=int, default=60, help='Refresh time. Default: 60 seconds.')
+parser.add_argument('-t', '--threshold', type=float, default=5, help='Mark cell as red if absolute value of bias drops below threshold. Default: 5 V.')
 
 args = parser.parse_args()
 
@@ -138,7 +141,7 @@ def get_status(sector):
 
     return bias
 
-def update_status(ib_status, delay):
+def update_status(ib_status, delay, threshold):
     while True:
         # get status
         for sector in range(64):
@@ -152,11 +155,11 @@ def update_status(ib_status, delay):
                 bias = [None]*6
 
             for ib in range(6):
-                ib_status[sector][ib].config(text=f'ib {ib}: {bias[ib]:.2f} V')
+                ib_status[sector][ib].config(text=f'ib {ib}: {bias[ib]:06.2f} V')
                 ib_status[sector][ib].config(background='white')
                 if(bias[ib] is None):
                     ib_status[sector][ib].config(background='black')
-                elif(abs(bias[ib]) < 5):
+                elif(abs(bias[ib]) < threshold):
                     ib_status[sector][ib].config(background='red')
                 else:
                     ib_status[sector][ib].config(background='green')
@@ -164,27 +167,36 @@ def update_status(ib_status, delay):
         threading.Event().wait(delay)
 
 if __name__ == '__main__':
-    delay   = args.delay
+    delay     = args.delay
+    threshold = args.threshold
+    # Number of sectors in the EMCal
+    nSectors  = 64
+    # Number of interface boards (IB) in each sector
+    nIBs      = 6
 
     root = tk.Tk()
-    root.title("sPHENIX EMCal Bias Monitor")
+    root.title('sPHENIX EMCal Bias Monitor')
+
+    # create style
     s = ttk.Style()
     s.configure('mainFrame.TFrame',background='#3A3845')
-    s.configure('sector.TFrame',background='green')
+
+    # make the window resizable
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
 
     frame = ttk.Frame(root, width=1000, height=500, style='mainFrame.TFrame')
     frame.grid(row=0,column=0, sticky='NEWS')
 
+    # initial the GUI layout
     ib_status = {}
-    for i in range(64):
+    for i in range(nSectors):
         sector = ttk.Frame(frame, width=50, height=100)
         sector.grid(row=i//16,column=i%16, padx=5, pady=5, sticky='EW')
         sector_title = ttk.Label(sector, text=f'Sector {i}')
         sector_title.grid(row=0,column=0)
         ib_arr = []
-        for j in range(6):
+        for j in range(nIBs):
             ib = ttk.Label(sector, text=f'ib {j}')
             ib.grid(row=j+1, column=0, sticky='EW')
             ib_arr.append(ib)
@@ -199,7 +211,8 @@ if __name__ == '__main__':
     frame.columnconfigure(tuple(range(16)), weight=1)
     frame.rowconfigure(tuple(range(4)), weight=1)
 
-    thread = threading.Thread(target=update_status, args=(ib_status,delay))
+    # create a separate thread which will execute the update_status at the given delay
+    thread = threading.Thread(target=update_status, args=(ib_status, delay, threshold))
     thread.start()
 
     root.mainloop()
