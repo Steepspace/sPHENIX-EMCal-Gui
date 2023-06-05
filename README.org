@@ -1,0 +1,42 @@
+#+TITLE: Readme
+
+* Description
+A graphical interface to monitor the bias voltages on the interface boards of the EMCal.
+
+** Legend
+*** Green: Bias voltage good and in the expected range.
+*** Red: Bias voltage is very low. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
+*** Orange: Bias voltage lower than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
+*** Purple: Bias voltage is much higher than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
+*** Grey: Known issue. Ignore.
+
+Example:
+file:images/EMCal-Bias-legend.png
+
+* Instructions
+If the GUI closes it can be recovered as follows:
+1) Open Terminal.
+2) Execute the command:
+#+begin_src bash
+./EMCal-Bias-Monitor/emcalsector.py
+#+end_src
+
+* Usage
+Can be run on sphenix-slow@control1, phnxrc@daq01 and phnxrc@daq02.
+** Default
+Shows the GUI in the minimalistic form.
+#+begin_src bash
+./emcalsector.py
+#+end_src
+
+Example:
+[[file:images/EMCal-Bias-View-default.png]]
+
+** Verbose
+Shows the GUI with the bias voltage values.
+#+begin_src bash
+./emcalsector.py -v
+#+end_src
+
+Example:
+[[file:images/EMCal-Bias-View-verbose.png]]
