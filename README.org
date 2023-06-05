@@ -4,14 +4,14 @@
 A graphical interface to monitor the bias voltages on the interface boards of the EMCal.
 
 ** Legend
-*** Green: Bias voltage good and in the expected range.
-*** Red: Bias voltage is very low. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
-*** Orange: Bias voltage lower than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
-*** Purple: Bias voltage is much higher than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
-*** Grey: Known issue. Ignore.
+- Green: Bias voltage good and in the expected range.
+- Red: Bias voltage is very low. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
+- Orange: Bias voltage lower than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
+- Purple: Bias voltage is much higher than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
+- Grey: Known issue. Ignore.
 
 Example:
-file:images/EMCal-Bias-legend.png
+[[file:images/EMCal-Bias-legend.png]]
 
 * Instructions
 If the GUI closes it can be recovered as follows:
