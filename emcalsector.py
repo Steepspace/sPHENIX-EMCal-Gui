@@ -10,7 +10,6 @@ from tkinter import ttk
 parser = argparse.ArgumentParser(description='GUI to monitor the bias voltages from the EMCal.')
 
 parser.add_argument('-d', '--delay', type=int, default=60, help='Refresh time. Default: 60 seconds.')
-# parser.add_argument('-t', '--threshold', type=float, default=5, help='Mark cell as red if absolute value of bias drops below threshold. Default: 5 V.')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose.')
 
 args = parser.parse_args()
