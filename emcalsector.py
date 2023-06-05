@@ -161,7 +161,6 @@ def update_status(ib_status, delay, verbose):
                 else:
                     ib_status[sector][ib].config(text=f'ib {ib}')
 
-                # ib_status[sector][ib].config(background='white')
                 if(bias[ib] is None):
                     ib_status[sector][ib].config(background='black')
                 elif(bias[ib] >= -5):
@@ -193,6 +192,7 @@ if __name__ == '__main__':
     # create style
     s = ttk.Style()
     s.configure('mainFrame.TFrame',background='#3A3845')
+    s.configure('legend.TFrame',background='white')
 
     # make the window resizable
     root.columnconfigure(0, weight=1)
@@ -205,9 +205,9 @@ if __name__ == '__main__':
     ib_status = {}
     for i in range(nSectors):
         sector = ttk.Frame(frame, width=50, height=100)
-        sector.grid(row=i//16,column=i%16, padx=5, pady=5, sticky='EW')
+        sector.grid(row=i//16, column=i%16, padx=2, pady=2, sticky='EW')
         sector_title = ttk.Label(sector, text=f'S {i}')
-        sector_title.grid(row=0,column=0)
+        sector_title.grid(row=0, column=0)
         ib_arr = []
         for j in range(nIBs):
             ib = ttk.Label(sector, text=f'ib {j}')
@@ -220,8 +220,29 @@ if __name__ == '__main__':
 
         ib_status[i] = ib_arr
 
+    # configure legend
+    legend_map = {'< -68 V'       :'purple',
+                  '-68 V to -64 V':'green',
+                  '-64 V to -5 V' :'orange',
+                  '>= -5 V'       :'red',
+                  'Known Bad'     :'grey'}
+
+    legend = ttk.Frame(frame, width=75, height=100, style='legend.TFrame')
+    legend.grid(row=0, column=16, padx=2, pady=2, rowspan=4, sticky='NEWS')
+
+    legend_title = ttk.Label(legend, text='Legend', background='white')
+    legend_title.grid(row=0, column=0, columnspan=2)
+
+    for index, item in enumerate(legend_map.items()):
+        key, value = item
+        legend_cell = ttk.Label(legend, background=value, width=3)
+        legend_cell.grid(row=index+1, column=0, padx=5, pady=5, sticky='NEWS')
+
+        legend_cell = ttk.Label(legend, text=key, background='white')
+        legend_cell.grid(row=index+1, column=1, sticky='NS')
+
     # make the window resizable
-    frame.columnconfigure(tuple(range(16)), weight=1)
+    frame.columnconfigure(tuple(range(17)), weight=1)
     frame.rowconfigure(tuple(range(4)), weight=1)
 
     # create a separate thread which will execute the update_status at the given delay
