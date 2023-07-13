@@ -355,14 +355,12 @@ if __name__ == '__main__':
                   '-68 V to -64 V':'green',
                   '-64 V to -5 V' :'orange',
                   '>= -5 V'       :'red',
-                  'Known Bad'     :'gray',
-                  'Normal Gain'   :'green3',
-                  'High Gain'     :'brown'}
+                  'Known Bad'     :'gray'}
 
     legend = ttk.Frame(frame, width=75, height=100, style='legend.TFrame')
-    legend.grid(row=0, column=16, padx=2, pady=2, rowspan=4, sticky='NEWS')
+    legend.grid(row=0, column=16, padx=2, pady=2, rowspan=6, sticky='NEWS')
 
-    legend_title = ttk.Label(legend, text='Legend', background='white')
+    legend_title = ttk.Label(legend, text='IB Legend', background='white')
     legend_title.grid(row=0, column=0, columnspan=2)
 
     for index, item in enumerate(legend_map.items()):
@@ -373,6 +371,27 @@ if __name__ == '__main__':
         legend_cell = ttk.Label(legend, text=key, background='white')
         legend_cell.grid(row=index+1, column=1, sticky='NS')
 
+
+    blank_lines = 5
+    for i in range(blank_lines):
+        temp = ttk.Label(legend, text='', background='white')
+        temp.grid(row=len(legend_map)+i+1, column=0, columnspan=2, sticky='NS')
+
+    sector_legend_title = ttk.Label(legend, text='Sector Legend', background='white')
+    sector_legend_title.grid(row=len(legend_map)+blank_lines, column=0, columnspan=2, sticky='NS')
+
+    # configure legend
+    sector_legend_map = {'Normal Gain'   :'green3',
+                         'High Gain'     :'brown'}
+
+    for index, item in enumerate(sector_legend_map.items()):
+        key, value = item
+        legend_cell = ttk.Label(legend, background=value, width=3)
+        legend_cell.grid(row=len(legend_map)+index+blank_lines+1, column=0, padx=5, pady=5, sticky='NEWS')
+
+        legend_cell = ttk.Label(legend, text=key, background='white')
+        legend_cell.grid(row=len(legend_map)+index+blank_lines+1, column=1, sticky='NS')
+
     # keeps track of whether telnet is being used
     busy = [False]
 
@@ -380,8 +399,8 @@ if __name__ == '__main__':
     gains = ['Norm']*nSectors
 
     # create button to reset the gains
-    button = ttk.Button(legend, text='Recover Normal Gain', command=lambda: action(busy, gains))
-    button.grid(row=len(legend_map)+1, column=0, columnspan=2)
+    button = ttk.Button(legend, text='Restore Normal Gain', command=lambda: action(busy, gains))
+    button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+1, column=0, columnspan=2)
 
     # make the window resizable
     frame.columnconfigure(tuple(range(17)), weight=1)
