@@ -1,14 +1,21 @@
 #+TITLE: Readme
 
 * Description
-A graphical interface to monitor the bias voltages on the interface boards of the EMCal.
+A graphical interface to monitor the bias voltages on the interface boards as well as the gain status of the sectors in the EMCal.
 
-** Legend
+** IB Legend
 - Green: Bias voltage good and in the expected range.
 - Red: Bias voltage is very low. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
 - Orange: Bias voltage lower than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
 - Purple: Bias voltage is much higher than expected. Run recovery procedure for getting the biases back up. Notify the experts if the behavior persists.
 - Grey: Known issue. Ignore.
+
+** Sector Legend
+- Green: Sector is in normal gain.
+- Brown: Sector is in high gain.
+
+** Restore Normal Gain
+Button is provided to restore sectors to normal gain in case any sector reports being in high gain during normal beam operation.
 
 Example:
 [[file:images/EMCal-Bias-legend.png]]
