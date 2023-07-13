@@ -4,6 +4,7 @@ import telnetlib
 import threading
 import tkinter as tk
 from tkinter import ttk
+import numpy as np
 
 # Author: Apurva Narde, UIUC
 
@@ -123,6 +124,86 @@ def emcalcon_voltage(tn, ib):
 
     return float(readback[0].split('=')[3])
 
+def emcalcon_gain(tn):
+    tn.write(b'\n\r')
+    tn.write(b'\n\r')
+    nib=6
+    gains = []
+    for ib in range(0, nib):
+        command='$A'+str(ib)
+        tn.write(command.encode('ascii')+b'\n\r')
+        x = tn.read_until(b'>')
+        gainstring = x.decode('ascii')
+        # print(gainstring)
+        y = gainstring.split('=')
+        # print(y)
+        z = y[1].strip('\n\r>')
+        gains.append(z)
+    # print(gains)
+    return gains
+
+def emcalcon_setgain(tn, whichgain):
+    tn.write(b'\n\r')
+    tn.write(b'\n\r')
+
+    nib = 6
+
+    if whichgain == 'high':
+        for ib in range(0,nib):
+            command = '$A'+str(ib)+'h'
+            tn.write(command.encode('ascii'))
+            g = tn.read_until(b'>')
+            print(g.decode('ascii'))
+            tn.write(b'\n\r')
+#here is the checking loop, if this fails take it out
+#           time.sleep(1)
+            command = '$A'+str(ib)
+            tn.write(command.encode('ascii'))
+            g = tn.read_until(b'>')
+            status=str(g.decode('ascii'))
+            tn.write(b'\n\r')
+            while "igh" not in status:
+
+                command = '$A'+str(ib)+'h'
+                tn.write(command.encode('ascii'))
+                g = tn.read_until(b'>')
+                tn.write(b'\n\r')
+
+                command = '$A'+str(ib)
+                tn.write(command.encode('ascii'))
+                g = tn.read_until(b'>')
+                status=str(g.decode('ascii'))
+                tn.write(b'\n\r')
+            print('EMCAL high gain enabled')
+
+    else:
+        for ib in range(0,nib):
+            command = '$A'+str(ib)+'n'
+            tn.write(command.encode('ascii'))
+            g = tn.read_until(b'>')
+            print(g.decode('ascii'))
+            tn.write(b'\n\r')
+            #time.sleep(1)
+            command = '$A'+str(ib)
+            tn.write(command.encode('ascii'))
+            g = tn.read_until(b'>')
+            status=str(g.decode('ascii'))
+            tn.write(b'\n\r')
+            while "Norm" not in status:
+
+                command = '$A'+str(ib)+'h'
+                tn.write(command.encode('ascii'))
+                g = tn.read_until(b'>')
+                tn.write(b'\n\r')
+
+                command = '$A'+str(ib)
+                tn.write(command.encode('ascii'))
+                g = tn.read_until(b'>')
+                status=str(g.decode('ascii'))
+                tn.write(b'\n\r')
+
+        print('EMCAL gain set to normal (low)')
+
 def get_status(sector):
     # number of ib boards in the sector
     nib = 6
@@ -136,45 +217,92 @@ def get_status(sector):
     for ib in range(nib):
         bias.append(emcalcon_voltage(tn, ib))
 
+    # get gain modes
+    gain = emcalcon_gain(tn)
+
     # close connection
     emcalcon_disconnect(tn)
 
-    return bias
+    return bias, gain
 
-def update_status(ib_status, delay, verbose):
+def update_status(sector_status, ib_status, delay, verbose, busy, gains, nSectors=64, nIBs=6):
     while True:
-        # get status
-        for sector in range(64):
-            for ib in range(6):
-                ib_status[sector][ib].config(background='black')
-
-        for sector in range(64):
-            try:
-                bias = get_status(sector)
-            except Exception as ex:
-                bias = [None]*6
-
-            for ib in range(6):
-                if(verbose):
-                    ib_status[sector][ib].config(text=f'ib {ib}: {bias[ib]:06.2f} V')
-                else:
-                    ib_status[sector][ib].config(text=f'ib {ib}')
-
-                if(bias[ib] is None):
+        if(not busy[0]):
+            busy[0] = True
+            # get status
+            for sector in range(nSectors):
+                for ib in range(nIBs):
                     ib_status[sector][ib].config(background='black')
-                elif(bias[ib] >= -5):
-                    ib_status[sector][ib].config(background='red')
-                elif(bias[ib] >= -64):
-                    ib_status[sector][ib].config(background='orange')
-                elif(bias[ib] >= -68):
-                    ib_status[sector][ib].config(background='green')
+
+            for sector in range(nSectors):
+                try:
+                    bias, gain = get_status(sector)
+
+                    # testing
+                    # bias = np.random.randint(-70,0,nIBs)
+                    # gain = np.random.choice(['Norm','High'], nIBs, True, [0.9,0.1])
+                except Exception as ex:
+                    bias = [None]*nIBs
+                    print(f'Error in retrieving bias for sector: {sector}')
+
+                if('High' in gain):
+                    sector_status[sector].config(background='brown')
+                    gains[sector] = 'High'
                 else:
-                    ib_status[sector][ib].config(background='purple')
+                    sector_status[sector].config(background='green3')
+                    gains[sector] = 'Norm'
 
-        # known bad ib boards
-        ib_status[50][1].config(background='grey')
+                for ib in range(nIBs):
+                    if(verbose):
+                        ib_status[sector][ib].config(text=f'ib {ib}: {bias[ib]:06.2f} V')
+                    else:
+                        ib_status[sector][ib].config(text=f'ib {ib}')
 
+                    if(bias[ib] is None):
+                        ib_status[sector][ib].config(background='black')
+                    elif(bias[ib] >= -5):
+                        ib_status[sector][ib].config(background='red')
+                    elif(bias[ib] >= -64):
+                        ib_status[sector][ib].config(background='orange')
+                    elif(bias[ib] >= -68):
+                        ib_status[sector][ib].config(background='green')
+                    else:
+                        ib_status[sector][ib].config(background='purple')
+
+            # known bad ib boards
+            ib_status[50][1].config(background='gray')
+
+            busy[0] = False
+        else:
+            print('Currently busy')
         threading.Event().wait(delay)
+
+def reset_gain(sector):
+    # get connection
+    host = all_controller_ip[sector]
+    tn = emcalcon_connect(host)
+
+    # set gain to normal
+    emcalcon_setgain(tn,'normal')
+
+    # close connection
+    emcalcon_disconnect(tn)
+
+def action(busy, gains, nSectors=64):
+    if(not busy[0]):
+        busy[0] = True
+        for sector in range(nSectors):
+            # testing
+            # print(f'sector: {sector}, gain: {gains[sector]}')
+            if(gains[sector] != 'Norm'):
+                try:
+                    reset_gain(sector)
+                except Exception as ex:
+                    print(f'Error in resetting gain for sector {sector}')
+
+        busy[0] = False
+    else:
+        print('Currently busy, try again shortly.')
 
 if __name__ == '__main__':
     delay     = args.delay
@@ -192,6 +320,7 @@ if __name__ == '__main__':
     s = ttk.Style()
     s.configure('mainFrame.TFrame',background='#3A3845')
     s.configure('legend.TFrame',background='white')
+    s.configure('button.TFrame',background='gray')
 
     # make the window resizable
     root.columnconfigure(0, weight=1)
@@ -202,11 +331,13 @@ if __name__ == '__main__':
 
     # initial the GUI layout
     ib_status = {}
+    sector_status = []
     for i in range(nSectors):
         sector = ttk.Frame(frame, width=50, height=100)
         sector.grid(row=i//16, column=i%16, padx=2, pady=2, sticky='EW')
         sector_title = ttk.Label(sector, text=f'S {i}')
-        sector_title.grid(row=0, column=0)
+        sector_title.grid(row=0, column=0, sticky='EW')
+        sector_status.append(sector_title)
         ib_arr = []
         for j in range(nIBs):
             ib = ttk.Label(sector, text=f'ib {j}')
@@ -224,7 +355,9 @@ if __name__ == '__main__':
                   '-68 V to -64 V':'green',
                   '-64 V to -5 V' :'orange',
                   '>= -5 V'       :'red',
-                  'Known Bad'     :'grey'}
+                  'Known Bad'     :'gray',
+                  'Normal Gain'   :'green3',
+                  'High Gain'     :'brown'}
 
     legend = ttk.Frame(frame, width=75, height=100, style='legend.TFrame')
     legend.grid(row=0, column=16, padx=2, pady=2, rowspan=4, sticky='NEWS')
@@ -240,12 +373,22 @@ if __name__ == '__main__':
         legend_cell = ttk.Label(legend, text=key, background='white')
         legend_cell.grid(row=index+1, column=1, sticky='NS')
 
+    # keeps track of whether telnet is being used
+    busy = [False]
+
+    # initally have the gains status be all normal
+    gains = ['Norm']*nSectors
+
+    # create button to reset the gains
+    button = ttk.Button(legend, text='Recover Normal Gain', command=lambda: action(busy, gains))
+    button.grid(row=len(legend_map)+1, column=0, columnspan=2)
+
     # make the window resizable
     frame.columnconfigure(tuple(range(17)), weight=1)
     frame.rowconfigure(tuple(range(4)), weight=1)
 
     # create a separate thread which will execute the update_status at the given delay
-    thread = threading.Thread(target=update_status, args=(ib_status, delay, verbose))
+    thread = threading.Thread(target=update_status, args=(sector_status, ib_status, delay, verbose, busy, gains))
     thread.start()
 
     root.mainloop()
