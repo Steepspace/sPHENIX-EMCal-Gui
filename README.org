@@ -25,15 +25,15 @@ If the GUI closes it can be recovered as follows:
 1) Open Terminal.
 2) Execute the command:
 #+begin_src bash
-./EMCal-Bias-Monitor/emcalsector.py
+./home/sphenix-slow/EMCal-Bias-Monitor/emcalsector.py
 #+end_src
 
 * Usage
-Can be run on sphenix-slow@control1, phnxrc@daq01 and phnxrc@daq02.
+Can be run on control1, sebXX, or daqXX.
 ** Default
 Shows the GUI in the minimalistic form.
 #+begin_src bash
-./emcalsector.py
+./home/sphenix-slow/EMCal-Bias-Monitor/emcalsector.py
 #+end_src
 
 Example:
@@ -42,7 +42,7 @@ Example:
 ** Verbose
 Shows the GUI with the bias voltage values.
 #+begin_src bash
-./emcalsector.py -v
+./home/sphenix-slow/EMCal-Bias-Monitor/emcalsector.py -v
 #+end_src
 
 Example:
