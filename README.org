@@ -17,6 +17,9 @@ A graphical interface to monitor the bias voltages on the interface boards as we
 ** Restore Normal Gain
 Button is provided to restore sectors to normal gain in case any sector reports being in high gain during normal beam operation.
 
+** Bias Voltage Controls
+Button is provided to turn all bias voltages to on/off.
+
 Example:
 [[file:images/EMCal-Bias-legend.png]]
 

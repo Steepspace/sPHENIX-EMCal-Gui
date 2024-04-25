@@ -5,6 +5,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
+import subprocess
 
 # Author: Apurva Narde, UIUC
 
@@ -239,8 +240,8 @@ def update_status(sector_status, ib_status, delay, verbose, busy, gains, nSector
                     bias, gain = get_status(sector)
 
                     # testing
-                    # bias = np.random.randint(-70,0,nIBs)
-                    # gain = np.random.choice(['Norm','High'], nIBs, True, [0.9,0.1])
+                    # bias = np.random.choice([-70,-65,-10,0], nIBs, True, [0.01,0.95,0.02,0.02])
+                    # gain = np.random.choice(['Norm','High'], nIBs, True, [0.99,0.01])
                 except Exception as ex:
                     bias = [None]*nIBs
                     print(f'Error in retrieving bias for sector: {sector}')
@@ -303,6 +304,18 @@ def action(busy, gains, nSectors=64):
         busy[0] = False
     else:
         print('Currently busy, try again shortly.')
+
+# call script to turn bias voltage ON
+def bias_voltage_on():
+    # testing
+    # subprocess.call('./template/on.sh')
+    subprocess.call('/home/phnxrc/BiasControl/onemall.sh')
+
+# call script to turn bias voltage OFF
+def bias_voltage_off():
+    # testing
+    # subprocess.call('./template/off.sh')
+    subprocess.call('/home/phnxrc/BiasControl/offemall.sh')
 
 if __name__ == '__main__':
     delay     = args.delay
@@ -401,6 +414,21 @@ if __name__ == '__main__':
     # create button to reset the gains
     button = ttk.Button(legend, text='Restore Normal Gain', command=lambda: action(busy, gains))
     button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+1, column=0, columnspan=2)
+
+    for i in range(2):
+        temp = ttk.Label(legend, text='', background='white')
+        temp.grid(row=len(legend_map)+blank_lines+i+5, column=0, columnspan=2, sticky='NS')
+
+    bias_legend_title = ttk.Label(legend, text='Bias Voltage', background='white')
+    bias_legend_title.grid(row=len(legend_map)+blank_lines+7, column=0, columnspan=2, sticky='NS')
+
+    # create button to turn ON bias voltage
+    button2 = ttk.Button(legend, text='Bias Voltage ON', command=lambda: bias_voltage_on())
+    button2.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+8, column=0, columnspan=2, sticky='EW')
+
+    # create button to turn ON bias voltage
+    button3 = ttk.Button(legend, text='Bias Voltage OFF', command=lambda: bias_voltage_off())
+    button3.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+9, column=0, columnspan=2, sticky='EW')
 
     # make the window resizable
     frame.columnconfigure(tuple(range(17)), weight=1)
