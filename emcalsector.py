@@ -18,7 +18,7 @@ prefix='/home/phnxrc/haggerty/snmp/bin/'
 
 parser = argparse.ArgumentParser(description='GUI to monitor the bias voltages from the EMCal.')
 
-parser.add_argument('-d', '--delay', type=int, default=80, help='Refresh time. Default: 80 seconds.')
+parser.add_argument('-d', '--delay', type=int, default=600, help='Refresh time. Default: 10 minutes.')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose.')
 
 args = parser.parse_args()
