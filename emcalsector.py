@@ -5,17 +5,53 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
+import sys
+import os
+import re
+import time 
+import hvcontrol
 import subprocess
 
+prefix='/home/phnxrc/haggerty/snmp/bin/' 
 # Author: Apurva Narde, UIUC
 
 parser = argparse.ArgumentParser(description='GUI to monitor the bias voltages from the EMCal.')
 
-parser.add_argument('-d', '--delay', type=int, default=60, help='Refresh time. Default: 60 seconds.')
+parser.add_argument('-d', '--delay', type=int, default=80, help='Refresh time. Default: 80 seconds.')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose.')
 
 args = parser.parse_args()
 
+recoverable_channels=dict()
+failures=dict()
+chnlist = {
+        0: [
+            "CH-0", "CH-1", "CH-2", "CH-3", "CH-4", "CH-5", "CH-6", "CH-7",
+            "CH-8", "CH-9", "CH-10", "CH-11", "CH-12", "CH-13", "CH-14", "CH-15",
+            "CH-16", "CH-17", "CH-18", "CH-19", "CH-20", "CH-21", "CH-22", "CH-23",
+            "CH-24", "CH-25", "CH-26", "CH-27", "CH-28", "CH-29", "CH-30", "CH-31",
+            "CH-32", "CH-33", "CH-34", "CH-35", "CH-36", "CH-37", "CH-38", "CH-39",
+            "CH-40", "CH-41", "CH-42", "CH-43", "CH-44", "CH-45", "CH-46", "CH-47",
+            "CH-48", "CH-49", "CH-50", "CH-51", "CH-52", "CH-53", "CH-54", "CH-55",
+            "CH-56", "CH-57", "CH-58", "CH-59", "CH-60", "CH-61", "CH-62", "CH-63",
+            "CH-64", "CH-65", "CH-66", "CH-67", "CH-68", "CH-69", "CH-70", "CH-71",
+            "CH-72", "CH-73", "CH-74", "CH-75", "CH-76", "CH-77", "CH-78", "CH-79"
+            ],
+        1: [
+            "CH-0", "CH-1", "CH-2", "CH-3", "CH-4", "CH-5", "CH-6", "CH-7",
+            "CH-8", "CH-9", "CH-10", "CH-11", "CH-12", "CH-13", "CH-14", "CH-15"
+        ]
+}
+mpod_ip={
+    "3A2-1": 141,
+    "3A2-2": 140,
+    "3A5-1": 143,
+    "3A5-2": 142,
+    "3C2-1": 145,
+    "3C2-2": 144,
+    "3C8-1": 147,
+    "3C8-2": 146
+}
 controller_ip = {
     # north
     '3C2':
@@ -107,25 +143,160 @@ def emcalcon_connect(HOST):
 def emcalcon_disconnect(tn):
     tn.close()
 
-def emcalcon_voltage(tn, ib):
-    command = '$U'
-    command += str(ib)
-    tn.write(command.encode('ascii')+b"\n\r")
-    x = tn.read_until(b">")
-    line = x.decode('ascii')
-    tn.write(b"\n\r")
+def emcalcon_voltage_one_crate(ip):
+   #connect to the snmp crate 
+    getter = [prefix+'snmpwalk', 
+        '-OqvU', 
+        '-v', 
+        '2c', 
+        '-M', 
+        '+/home/phnxrc/haggerty/MIBS', 
+        '-m', 
+        '+WIENER-CRATE-MIB', 
+        '-c', 
+        'public', 
+        ip,
+        'outputMeasurementSenseVoltage']
+    getter[-2] = ip 
+    answer = subprocess.run(getter, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    states = answer.stdout.split('\n')[:-1]
+    sip= ip.split('.')[-1]
+    sip = int(sip)%2
+    chan = chnlist[sip]
+    result = {chan[i]: eval(states[i]) for i in range(len(states))}
+    return result
 
-    sline = line.rstrip()
-    line = sline.lstrip()
-    line = line.replace('\r', '')
-    tstr = str(line)
-    readback = tstr.split('\n')
+def trip_status_one_crate(ip):
+    getter = [prefix+'snmpwalk', 
+       '-OqvU', 
+       '-v', 
+       '2c', 
+       '-M', 
+       '+/home/phnxrc/haggerty/MIBS', 
+       '-m', 
+       '+WIENER-CRATE-MIB', 
+       '-c', 
+       'public', 
+       ip,
+       'outputStatus']
+    getter[-2] = ip 
+    answer = subprocess.run(getter, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    states = answer.stdout.split('\n')[:-1]
+    sip= ip.split('.')[-1]
+    sip = int(sip)%2
+    chan = chnlist[sip]
+    result = {chan[i]: eval(states[i]) for i in range(len(states))}
+    return result
+def remap_bias(mpodbias):
+    bias=dict()
+    for i in range(64):
+        bias[i]=dict()
+    for i in mpodbias:
+        for j in mpodbias[i]:
+            sector,ib=ib_map(i,j)
+            bias[sector][ib]=-1*mpodbias[i][j] # this is to get the sign correct 
+    return bias
+def ib_map(ip, channel_j):
+    res=[ int(i) for i in channel_j.split("-") if i.isnumeric() ]
+    channel=res[0]
+    res1=[ int(i) for i in ip.split(".") if i.isnumeric() ]
+    crateip=res1[-1]
+    crate=""
+    for i in mpod_ip:
+        if mpod_ip[i] == crateip:
+            crate=i
+            rack=[ i for i in crate.split("-")][0]
+            slot=int(channel/8)
+            channel=channel%8
+    if crateip == 143 and slot == 0:
+        slot = 3
+    sector, ib = hvcontrol.mpod_channel_to_sector(crate, slot, channel) 
+    return sector, ib
+def channel_name(channel_j):
+    res=[ int(i) for i in channel_j.split("-") if i.isnumeric() ]
+    channel=res[0]
+    slot=channel/8
+    mod=channel%8
+    cn=slot*100+mod
+    channel_name="u"+str(cn)
+    return channel_name
 
-    readback.remove('>')
+def recover_trips():
+   for t in recoverable_channels:
+       for c in recoverable_channels[t]:
+           recover_trip(t, c)
+   time.sleep(2)
+   find_trips()
+   return
 
-    return float(readback[0].split('=')[3])
+def recover_trip(ip, channel):
+    setter = ['snmpset', 
+                '-v', 
+                '2c',
+                '-M',
+                '+/home/phnxrc/BiasControl',
+                '-m', 
+                '+WIENER-CRATE-MIB',
+                '-c'
+                'guru'
+                '10.20.34.140', 
+                'outputSwitch.'
+                'F',
+                '10.0']
 
-def emcalcon_gain(tn):
+    setter[-4] = ip
+    channel_id = channel_name(channel)
+    setter[-3]= setter[-3]+channelid
+    answer=subprocess.run(setter, universal_newlines=True, stdout=subprocess.PIPE)
+
+    setter2 = ['snmpset', 
+                '-v', 
+                '2c',
+                '-M',
+                '+/home/phnxrc/BiasControl',
+                '-m', 
+                '+WIENER-CRATE-MIB',
+                '-c'
+                'guru'
+                '10.20.34.140', 
+                'outputSwitch'
+                'F',
+                '1.0']
+    setter2[-4] = ip 
+    setter2[-3]=setter[-3]+channelid
+    answer=subprocess.run(setter2, universal_newlines=True, stdout=subprocess.PIPE)
+
+    return
+
+def find_trips():
+    recoverable_channels.clear()
+    failures.clear()
+    trips=dict()
+    otherfails=dict()
+    for i in mpod_ip:
+        ip="10.20.34."+str(mpod_ip[i])
+        trips[ip]=list()
+        otherfails[ip]=list()
+        trip_stats=trip_status_one_crate(ip)
+        for t in trip_stats:
+            if "outputFailureMaxCurrent" in trip_stats[t]:
+                trips[ip].append(t)
+            elif "outputFailure" in trip_stats[t]:
+                otherfails[ip].append(t)
+    for i in range(len(trips)):
+        t=list(trips.keys())[i]
+        if len(trips[t]) > 0: 
+            recoverable_channels[t]=list()
+        for j in trips[t]:
+            recoverable_channels[t].append(j)
+    for i in range(len(otherfails)):
+        o=list(otherfails.keys())[i]
+        if  len(otherfails[o]) > 0:
+            failures[t]=list()
+        for j in otherfails[o]:
+            failures[o].append(j)
+    return
+def emcalcon_gain(tn):  # this is no longer part of the normal status call, updated more slowly
     tn.write(b'\n\r')
     tn.write(b'\n\r')
     nib=6
@@ -135,15 +306,12 @@ def emcalcon_gain(tn):
         tn.write(command.encode('ascii')+b'\n\r')
         x = tn.read_until(b'>')
         gainstring = x.decode('ascii')
-        # print(gainstring)
         y = gainstring.split('=')
-        # print(y)
         z = y[1].strip('\n\r>')
         gains.append(z)
-    # print(gains)
     return gains
 
-def emcalcon_setgain(tn, whichgain):
+def emcalcon_setgain(tn, whichgain): 
     tn.write(b'\n\r')
     tn.write(b'\n\r')
 
@@ -205,74 +373,112 @@ def emcalcon_setgain(tn, whichgain):
 
         print('EMCAL gain set to normal (low)')
 
-def get_status(sector):
+def get_gain_status(sector): #update to only take the gain readout 
     # number of ib boards in the sector
-    nib = 6
-
+    
     # get connection
     host = all_controller_ip[sector]
     tn = emcalcon_connect(host)
 
     # get bias values
-    bias = []
-    for ib in range(nib):
-        bias.append(emcalcon_voltage(tn, ib))
-
     # get gain modes
     gain = emcalcon_gain(tn)
 
     # close connection
     emcalcon_disconnect(tn)
+    if gain == None: 
+        time.sleep(2) #wait 2 seconds to let the controler relax
+        #try a second time to communicate 
+        tn = emcalcon_connect(host)
+        gain = emcalcon_gain(tn)
+        emcalcon_disconnect(tn)
+    return gain
 
-    return bias, gain
-
-def update_status(sector_status, ib_status, delay, verbose, busy, gains, nSectors=64, nIBs=6):
+def update_status(sector_status, ib_status, delay, verbose, busy, gains, cycles, nSectors=64, nIBs=6):
     while True:
+        getgain=False
+        if cycles % 10 == 0:
+            getgain = True
+            cycles = 0
+        cycles += 1
         if(not busy[0]):
             busy[0] = True
             # get status
+            biasmpod=dict()
+            bias=dict()
+            find_trips()
+            rc_ib=list()
+            fl_ib=list()
+            for i in recoverable_channels:
+                #print(i)
+                for j in recoverable_channels[i]:
+                    rc_ib.append(ib_map(i, j))
+            for i in failures:
+                for j in failures[i]:
+                    fl_ib.append(ib_map(i,j))
+            time.sleep(3)
+            for i in mpod_ip:
+                ip="10.20.34."+str(mpod_ip[i])
+                biasmpod[ip]=emcalcon_voltage_one_crate(ip)
+            bias=remap_bias(biasmpod)
             for sector in range(nSectors):
                 for ib in range(nIBs):
                     ib_status[sector][ib].config(background='black')
 
             for sector in range(nSectors):
-                try:
-                    bias, gain = get_status(sector)
+                if getgain:
+                    try:
+                         gain = get_gain_status(sector)
 
                     # testing
                     # bias = np.random.choice([-70,-65,-10,0], nIBs, True, [0.01,0.95,0.02,0.02])
                     # gain = np.random.choice(['Norm','High'], nIBs, True, [0.99,0.01])
-                except Exception as ex:
-                    bias = [None]*nIBs
-                    print(f'Error in retrieving bias for sector: {sector}')
-
-                if('High' in gain):
-                    sector_status[sector].config(background='brown')
-                    gains[sector] = 'High'
-                else:
-                    sector_status[sector].config(background='green3')
-                    gains[sector] = 'Norm'
-
+                    except Exception as ex:
+                   # bias = [None]*nIBs
+                        print(f'Error in retrieving gain for sector: {sector}')
+                        gain="Who Knows??"
+                    if('High' in gain):
+                        sector_status[sector].config(background='brown')
+                        gains[sector] = 'High'
+                    elif('Norm' in gain):
+                        sector_status[sector].config(background='green3')
+                        gains[sector] = 'Norm'
+                    else: 
+                        try: #giving it one more chance
+                            time.sleep(1)
+                            gain =get_gain_status(sector)
+                        except Exception as ex:
+                            sector_status[sector].config(background='purple')
+                            gains[sector] = None
                 for ib in range(nIBs):
                     if(verbose):
                         ib_status[sector][ib].config(text=f'ib {ib}: {bias[ib]:06.2f} V')
                     else:
                         ib_status[sector][ib].config(text=f'ib {ib}')
-
-                    if(bias[ib] is None):
+                    #print(" Sector : " + str(sector) + ", IB: "+str(ib))
+#                    print(" Bias dictionary has total size " + str(len(bias)) +" and this sector has length " + str(len(bias[sector]))) 
+                    try:
+                        bias[sector][ib]
+                    except Exception as ex:
+                        bias[sector][ib]=None
+                    if(bias[sector][ib] is None):
+                        print("found nothing") 
                         ib_status[sector][ib].config(background='black')
-                    elif(bias[ib] >= -5):
+                    elif(bias[sector][ib] >= -5):
                         ib_status[sector][ib].config(background='red')
-                    elif(bias[ib] >= -64):
+                    elif(bias[sector][ib] >= -64):
                         ib_status[sector][ib].config(background='orange')
-                    elif(bias[ib] >= -68):
+                    elif(bias[sector][ib] >= -68):
                         ib_status[sector][ib].config(background='green')
                     else:
                         ib_status[sector][ib].config(background='purple')
-
+                    if rc_ib.count(ib) != 0:
+                        ib_status[sector][ib].config(background='blue')
+                    if fl_ib.count(ib) != 0:
+                        ib_status[sector][ib].config(background='HotPink1')
             # known bad ib boards
             ib_status[50][1].config(background='gray')
-
+            ib_status[4][1].config(background='gray')
             busy[0] = False
         else:
             print('Currently busy')
@@ -309,16 +515,17 @@ def action(busy, gains, nSectors=64):
 def bias_voltage_on():
     # testing
     # subprocess.call('./template/on.sh')
-    subprocess.call('/home/phnxrc/BiasControl/onemall.sh')
+    os.system('ssh opc0.sphenix.bnl.gov "bash /home/phnxrc/BiasControl/onemall.sh"')
 
 # call script to turn bias voltage OFF
 def bias_voltage_off():
     # testing
     # subprocess.call('./template/off.sh')
-    subprocess.call('/home/phnxrc/BiasControl/offemall.sh')
+    os.system('ssh opc0.sphenix.bnl.gov "bash /home/sphenix-slow/BiasControl/offemall.sh"')
 
 if __name__ == '__main__':
     delay     = args.delay
+    cycles = 0
     # threshold = args.threshold
     verbose   = args.verbose
     # Number of sectors in the EMCal
@@ -368,7 +575,10 @@ if __name__ == '__main__':
                   '-68 V to -64 V':'green',
                   '-64 V to -5 V' :'orange',
                   '>= -5 V'       :'red',
-                  'Known Bad'     :'gray'}
+                  'Known Bad'     :'gray',
+                  'Tripped (recoverable)':'blue',
+                  'Failure (expert)':'HotPink1'
+                  }
 
     legend = ttk.Frame(frame, width=75, height=100, style='legend.TFrame')
     legend.grid(row=0, column=16, padx=2, pady=2, rowspan=6, sticky='NEWS')
@@ -395,7 +605,8 @@ if __name__ == '__main__':
 
     # configure legend
     sector_legend_map = {'Normal Gain'   :'green3',
-                         'High Gain'     :'brown'}
+                         'High Gain'     :'brown', 
+                         'Could Not Measure': 'purple'}
 
     for index, item in enumerate(sector_legend_map.items()):
         key, value = item
@@ -414,6 +625,9 @@ if __name__ == '__main__':
     # create button to reset the gains
     button = ttk.Button(legend, text='Restore Normal Gain', command=lambda: action(busy, gains))
     button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+1, column=0, columnspan=2)
+    #button to update the gains on your time
+    button = ttk.Button(legend, text='Update the Gain', command=lambda: update_status(sector_status, ibstatus, 0, verbose, busy, gains, 0))
+    button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+3, column=0, columnspan=2)
 
     for i in range(2):
         temp = ttk.Label(legend, text='', background='white')
@@ -429,13 +643,15 @@ if __name__ == '__main__':
     # create button to turn ON bias voltage
     button3 = ttk.Button(legend, text='Bias Voltage OFF', command=lambda: bias_voltage_off())
     button3.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+9, column=0, columnspan=2, sticky='EW')
-
+    #Button to recover identified trips
+    button4= ttk.Button(legend, text='Recover trips', command=lambda: recover_trips())
+    button4.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+10, column=0, columnspan=2, sticky='EW')
     # make the window resizable
     frame.columnconfigure(tuple(range(17)), weight=1)
     frame.rowconfigure(tuple(range(4)), weight=1)
 
     # create a separate thread which will execute the update_status at the given delay
-    thread = threading.Thread(target=update_status, args=(sector_status, ib_status, delay, verbose, busy, gains))
+    thread = threading.Thread(target=update_status, args=(sector_status, ib_status, delay, verbose, busy, gains, cycles))
     thread.start()
 
     root.mainloop()
