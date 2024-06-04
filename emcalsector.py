@@ -421,8 +421,8 @@ def update_status(sector_status, ib_status, delay, verbose, busy, gains, legend,
                     else:
                         ib_status[sector][ib].config(text=f'ib {ib}')
 
-                    if(bias[ib] is None):
-                        print("found nothing") 
+                    if(len(bias) == 0 or bias[ib] is None):
+                        print(f"sector: {sector}, ib: {ib}: found nothing")
                         ib_status[sector][ib].config(background='black')
                     elif(bias[ib] >= -5):
                         ib_status[sector][ib].config(background='red')
@@ -611,8 +611,8 @@ if __name__ == '__main__':
     button3.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+9, column=0, columnspan=2, sticky='EW')
 
     #Button to recover identified trips
-    button4= ttk.Button(legend, text='Recover trips', command=lambda: recover_trips())
-    button4.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+10, column=0, columnspan=2, sticky='EW')
+    # button4= ttk.Button(legend, text='Recover trips', command=lambda: recover_trips())
+    # button4.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+10, column=0, columnspan=2, sticky='EW')
 
     # make the window resizable
     frame.columnconfigure(tuple(range(17)), weight=1)
