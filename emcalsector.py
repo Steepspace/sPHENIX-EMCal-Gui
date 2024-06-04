@@ -444,7 +444,7 @@ def update_status(sector_status, ib_status, delay, verbose, busy, gains, legend,
 
             # update readtime label
             readtime_title = ttk.Label(legend, text=f'Last Updated: {readtime}', background='white')
-            readtime_title.grid(row=len(legend_map)+blank_lines, column=0, columnspan=2, sticky='NS')
+            readtime_title.grid(row=len(legend_map)+blank_lines-1, column=0, columnspan=2, sticky='NS')
 
             busy[0] = False
         else:
