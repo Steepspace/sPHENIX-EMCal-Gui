@@ -590,10 +590,10 @@ if __name__ == '__main__':
 
     # create button to reset the gains
     button = ttk.Button(legend, text='Restore Normal Gain', command=lambda: action(busy, gains))
-    button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+1, column=0, columnspan=2)
+    button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+1, column=0, columnspan=2, sticky='EW')
     #button to update the gains on your time
-    button = ttk.Button(legend, text='Update the Gain', command=lambda: update_status(sector_status, ibstatus, 0, verbose, busy, gains, 0))
-    button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+3, column=0, columnspan=2)
+    # button = ttk.Button(legend, text='Update the Gain', command=lambda: update_status(sector_status, ibstatus, 0, verbose, busy, gains, 0))
+    # button.grid(row=len(legend_map)+len(sector_legend_map)+blank_lines+3, column=0, columnspan=2)
 
     for i in range(2):
         temp = ttk.Label(legend, text='', background='white')
