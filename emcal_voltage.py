@@ -30,37 +30,42 @@ user      = args.user
 threshold = args.threshold
 
 def get_bias_status():
-    with psycopg2.connect(f"host='{dbhost}' dbname='{dbname}' user='{user}'") as conn:
-        sql = f'''SELECT
-                    readtime,
-                    sector,
-                    ib,
-                    -vmeas as vmeas
-                FROM
-                emcal_mpodlog
-                WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                and (abs(vmeas) < {threshold})
-                and ((sector != 50 or ib != 1) and (sector != 4 or ib != 1))
-                ORDER BY readtime desc, sector, ib'''
+    df = pd.DataFrame()
+    try:
+        with psycopg2.connect(f"host='{dbhost}' dbname='{dbname}' user='{user}'") as conn:
+            sql = f'''SELECT
+                        -vmeas as vmeas
+                    FROM
+                    emcal_mpodlog
+                    WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
+                    and ((sector != 50 or ib != 1) and (sector != 4 or ib != 1))
+                    ORDER BY readtime desc, sector, ib'''
 
-        return pd.read_sql_query(sql, conn)
+            df = pd.read_sql_query(sql, conn)
+    except:
+        print(f'Failed to connect to {dbhost}, {dbname}')
+
+    return df
 
 def get_lv_status():
-    with psycopg2.connect(f"host='{dbhost}' dbname='{dbname}' user='{user}'") as conn:
-        sql = '''SELECT
-                    readtime,
-                    sector,
-                    ib,
-                    vp,
-                    vn
-                FROM
-                emcal_iface
-                WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                and ((vp < 5 or vp >= 7) or (vn < -7 or vn >= -5))
-                and ((sector != 50 or ib != 1) and (sector != 4 or ib != 1))
-                ORDER BY readtime desc, sector, ib'''
+    df = pd.DataFrame()
+    try:
+        with psycopg2.connect(f"host='{dbhost}' dbname='{dbname}' user='{user}'") as conn:
+            sql = '''SELECT
+                        vp,
+                        vn
+                    FROM
+                    emcal_iface
+                    WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
+                    and ((sector != 50 or ib != 1) and (sector != 4 or ib != 1))
+                    ORDER BY readtime desc, sector, ib'''
 
-        return pd.read_sql_query(sql, conn)
+            df = pd.read_sql_query(sql, conn)
+
+    except:
+        print(f'Failed to connect to {dbhost}, {dbname}')
+
+    return df
 
 def update_status(bias_label, lv_label, delay):
     while(1):
@@ -68,31 +73,51 @@ def update_status(bias_label, lv_label, delay):
         df_bias = get_bias_status()
 
         if(df_bias.empty):
-            bias_label.config(text='Bias Voltage is ON', background='green')
+                bias_label.config(text='Bias Voltage \n No DB Connection \n Check Bias GUI', background='blue')
         else:
-            bias_label.config(text='Bias Voltage is OFF', background='red')
-            print(df_bias)
+            off_counts = (df_bias['vmeas'].abs() < threshold).sum()
+            total      = df_bias.index.size
+
+            # no ib is under the threshold for being off
+            if(off_counts == 0):
+                bias_label.config(text='Bias Voltage is ON', background='green')
+
+            # a fraction of the number of ibs are in the threshold for being off
+            elif(off_counts < total):
+                bias_label.config(text=f'Bias Voltage \n {off_counts}/{total} OFF \n Check Bias GUI', background='red')
+
+            else:
+                bias_label.config(text='Bias Voltage is OFF', background='grey')
 
         # update lv status
         df_lv = get_lv_status()
 
         if(df_lv.empty):
-            lv_label.config(text='Low Voltage is ON', background='green')
+            lv_label.config(text='Low Voltage \n No DB Connection \n Check Low Voltage GUI', background='blue')
         else:
-            lv_label.config(text='Low Voltage is OFF', background='red')
-            print(df_lv)
+            off_counts = ((df_lv['vp'] < 5) | (df_lv['vp'] >= 7) | (df_lv['vn'] < -7) | (df_lv['vn'] >= -5)).sum()
+            total      = df_lv.index.size
+
+            # no ib is under the threshold for being off
+            if(off_counts == 0):
+                lv_label.config(text='Low Voltage is ON', background='green')
+
+            # a fraction of the number of ibs are in the threshold for being off
+            elif(off_counts < total):
+                lv_label.config(text=f'Low Voltage \n {off_counts}/{total} OFF \n Check Low Voltage GUI', background='red')
+
+            else:
+                lv_label.config(text='Low Voltage is OFF', background='grey')
 
         threading.Event().wait(delay)
 
 # call script to turn all voltage ON
 def all_voltage_on():
     os.system('ssh phnxrc@opc0 "bash /home/phnxrc/haggerty/emcal/offandon/emcalon"')
-    # os.system('ssh phnxrc@opc0 "echo on"')
 
 # call script to turn all voltage OFF
 def all_voltage_off():
     os.system('ssh phnxrc@opc0 "bash /home/phnxrc/haggerty/emcal/offandon/emcaloff"')
-    # os.system('ssh phnxrc@opc0 "echo off"')
 
 if __name__ == '__main__':
     delay     = args.delay
