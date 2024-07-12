@@ -514,13 +514,13 @@ def action(busy, gains, nSectors=64):
 def bias_voltage_on():
     # testing
     # subprocess.call('./template/on.sh')
-    os.system('ssh opc0.sphenix.bnl.gov "bash /home/phnxrc/BiasControl/onemall.sh"')
+    os.system('ssh phnxrc@opc0 "bash /home/phnxrc/BiasControl/onemall.sh"')
 
 # call script to turn bias voltage OFF
 def bias_voltage_off():
     # testing
     # subprocess.call('./template/off.sh')
-    os.system('ssh opc0.sphenix.bnl.gov "bash /home/sphenix-slow/BiasControl/offemall.sh"')
+    os.system('ssh phnxrc@opc0 "bash /home/sphenix-slow/BiasControl/offemall.sh"')
 
 if __name__ == '__main__':
     delay     = args.delay
