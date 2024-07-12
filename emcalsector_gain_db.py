@@ -385,23 +385,14 @@ user     ='phnxro'
 
 def get_db_status():
     with psycopg2.connect(f"host='{dbhost}' dbname='{dbname}' user='{user}'") as conn:
-        sql = '''SELECT
-                    readtime,
-                    sector,
-                    ib,
-                    gain
-                FROM
-                emcal_iface
-                WHERE
-                readtime = (
-                    SELECT
-                    max(readtime)
-                    FROM
-                    emcal_iface
-                )
-                ORDER BY
-                sector,
-                ib'''
+        sql = '''select date_trunc('minute', readtime) as readtime, sector, ib, gain
+                 from (select *
+                       from emcal_iface
+                       order by readtime desc
+                       limit 1000) as foo
+                 where date_trunc('minute', readtime)=(select date_trunc('minute', readtime) as readtime
+                                                       from (select max(readtime) as readtime
+                                                       from emcal_iface) as foo2);'''
 
         return pd.read_sql_query(sql, conn)
 
