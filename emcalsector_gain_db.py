@@ -168,28 +168,6 @@ def emcalcon_voltage_one_crate(ip):
     result = {chan[i]: eval(states[i]) for i in range(len(states))}
     return result
 
-def trip_status_one_crate(ip):
-    getter = [prefix+'snmpwalk', 
-       '-OqvU', 
-       '-v', 
-       '2c', 
-       '-M', 
-       '+/home/phnxrc/haggerty/MIBS', 
-       '-m', 
-       '+WIENER-CRATE-MIB', 
-       '-c', 
-       'public', 
-       ip,
-       'outputStatus']
-    getter[-2] = ip 
-    answer = subprocess.run(getter, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    states = answer.stdout.split('\n')[:-1]
-    sip= ip.split('.')[-1]
-    sip = int(sip)%2
-    chan = chnlist[sip]
-    result = {chan[i]: eval(states[i]) for i in range(len(states))}
-    return result
-
 def remap_bias(mpodbias):
     bias=dict()
     for i in range(64):
@@ -225,97 +203,6 @@ def channel_name(channel_j):
     cn=slot*100+mod
     channel_name="u"+str(cn)
     return channel_name
-
-def recover_trips():
-   for t in recoverable_channels:
-       for c in recoverable_channels[t]:
-           recover_trip(t, c)
-   time.sleep(2)
-   find_trips()
-   return
-
-def recover_trip(ip, channel):
-    setter = ['snmpset', 
-                '-v', 
-                '2c',
-                '-M',
-                '+/home/phnxrc/BiasControl',
-                '-m', 
-                '+WIENER-CRATE-MIB',
-                '-c'
-                'guru'
-                '10.20.34.140', 
-                'outputSwitch.'
-                'F',
-                '10.0']
-
-    setter[-4] = ip
-    channel_id = channel_name(channel)
-    setter[-3]= setter[-3]+channelid
-    answer=subprocess.run(setter, universal_newlines=True, stdout=subprocess.PIPE)
-
-    setter2 = ['snmpset', 
-                '-v', 
-                '2c',
-                '-M',
-                '+/home/phnxrc/BiasControl',
-                '-m', 
-                '+WIENER-CRATE-MIB',
-                '-c'
-                'guru'
-                '10.20.34.140', 
-                'outputSwitch'
-                'F',
-                '1.0']
-    setter2[-4] = ip 
-    setter2[-3]=setter[-3]+channelid
-    answer=subprocess.run(setter2, universal_newlines=True, stdout=subprocess.PIPE)
-
-    return
-
-def find_trips():
-    recoverable_channels.clear()
-    failures.clear()
-    trips=dict()
-    otherfails=dict()
-    for i in mpod_ip:
-        ip="10.20.34."+str(mpod_ip[i])
-        trips[ip]=list()
-        otherfails[ip]=list()
-        trip_stats=trip_status_one_crate(ip)
-        for t in trip_stats:
-            if "outputFailureMaxCurrent" in trip_stats[t]:
-                trips[ip].append(t)
-            elif "outputFailure" in trip_stats[t]:
-                otherfails[ip].append(t)
-    for i in range(len(trips)):
-        t=list(trips.keys())[i]
-        if len(trips[t]) > 0: 
-            recoverable_channels[t]=list()
-        for j in trips[t]:
-            recoverable_channels[t].append(j)
-    for i in range(len(otherfails)):
-        o=list(otherfails.keys())[i]
-        if  len(otherfails[o]) > 0:
-            failures[t]=list()
-        for j in otherfails[o]:
-            failures[o].append(j)
-    return
-
-def emcalcon_gain(tn):  # this is no longer part of the normal status call, updated more slowly
-    tn.write(b'\n\r')
-    tn.write(b'\n\r')
-    nib=6
-    gains = []
-    for ib in range(0, nib):
-        command='$A'+str(ib)
-        tn.write(command.encode('ascii')+b'\n\r')
-        x = tn.read_until(b'>')
-        gainstring = x.decode('ascii')
-        y = gainstring.split('=')
-        z = y[1].strip('\n\r>')
-        gains.append(z)
-    return gains
 
 def emcalcon_setgain(tn, whichgain):
     tn.write(b'\n\r')
