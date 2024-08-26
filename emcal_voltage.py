@@ -38,7 +38,7 @@ def get_bias_status():
                     FROM
                     emcal_mpodlog
                     WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1))
+                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2))
                     ORDER BY readtime desc, sector, ib'''
 
             df = pd.read_sql_query(sql, conn)
