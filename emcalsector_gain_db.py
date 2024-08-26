@@ -356,6 +356,7 @@ def update_status(sector_status, ib_status, delay, busy, gains, nSectors=64, nIB
             # known bad ib boards
             ib_status[50][1].config(background='gray')
             ib_status[4][1].config(background='gray')
+            ib_status[25][2].config(background='gray')
             busy[0] = False
         else:
             print('Currently busy')
