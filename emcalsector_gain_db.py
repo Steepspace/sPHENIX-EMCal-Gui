@@ -324,12 +324,21 @@ def update_status(sector_status, ib_status, delay, busy, gains, nSectors=64, nIB
                     sector_status[sector].config(background='purple')
                     gains[sector] = None
 
+                if(not bias[sector]):
+                    print(f'No bias voltage found for S: {sector}')
+                    continue
+                    # ib_status[sector][ib].config(background='black')
+
                 # plot bias
-                for ib in range(len(bias[sector])):
+                for ib in range(nIBs):
                     if(verbose):
                         ib_status[sector][ib].config(text=f'ib {ib}: {bias[sector][ib]:06.2f} V')
                     else:
                         ib_status[sector][ib].config(text=f'ib {ib}')
+
+                    if(ib not in bias[sector]):
+                        print(f'No bias voltage found for S: {sector}, IB: {ib}')
+                        continue
 
                     if(bias[sector][ib] >= -5):
                         ib_status[sector][ib].config(background='red')
@@ -339,10 +348,6 @@ def update_status(sector_status, ib_status, delay, busy, gains, nSectors=64, nIB
                         ib_status[sector][ib].config(background='green')
                     else:
                         ib_status[sector][ib].config(background='purple')
-
-                if(not bias[sector]):
-                    print(f'No bias voltage found for S: {sector}')
-                    # ib_status[sector][ib].config(background='black')
 
             # get the time that the database was last updated
             readtime = df['readtime'].iloc[0]
