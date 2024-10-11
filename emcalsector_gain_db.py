@@ -12,6 +12,7 @@ import subprocess
 import psycopg2
 import pandas as pd
 import pandas.io.sql as sqlio
+import re
 
 prefix='/home/phnxrc/haggerty/snmp/bin/' 
 # Author: Apurva Narde, UIUC
@@ -148,7 +149,7 @@ def emcalcon_disconnect(tn):
 def emcalcon_voltage_one_crate(ip):
    #connect to the snmp crate 
     getter = [prefix+'snmpwalk', 
-        '-OqvU', 
+        '-OqU', 
         '-v', 
         '2c', 
         '-M', 
@@ -161,11 +162,26 @@ def emcalcon_voltage_one_crate(ip):
         'outputMeasurementSenseVoltage']
     getter[-2] = ip 
     answer = subprocess.run(getter, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    states = answer.stdout.split('\n')[:-1]
+    stateschan = answer.stdout.split('\n')[:-1]
+    names=list()
+    states=list()
+    for i in range(len(stateschan)):
+       name=stateschan[i].split(" ")[0].split('.')[1]
+       names.append(int(re.sub('\D', '',name)))
+       states.append(stateschan[i].split(" ")[1])
+    startmodule=names[0]
+    if startmodule==100:
+        for i in range(len(names)):
+            names[i]=names[i]-100
+            if names[i] >= 200:
+                names[i]= names[i]-100
+    #this is accounting for the one crate that has modules 100 and 300 but no 0 or 200
+    for i in range(len(names)):
+        names[i]= channel_index(names[i])
     sip= ip.split('.')[-1]
     sip = int(sip)%2
     chan = chnlist[sip]
-    result = {chan[i]: eval(states[i]) for i in range(len(states))}
+    result = {chan[names[i]]: eval(states[i]) for i in range(len(states))}
     return result
 
 def remap_bias(mpodbias):
@@ -203,6 +219,15 @@ def channel_name(channel_j):
     cn=slot*100+mod
     channel_name="u"+str(cn)
     return channel_name
+
+def channel_index(mod_ch_num):
+    index=0
+    module=int(mod_ch_num)/100
+    module=int(module)
+    channel=(int(mod_ch_num) % 100 ) % 8 
+    index=channel+8*module
+    print(str(mod_ch_num)+" index: " + str(index))
+    return index
 
 def emcalcon_setgain(tn, whichgain):
     tn.write(b'\n\r')
