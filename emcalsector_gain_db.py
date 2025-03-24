@@ -147,7 +147,7 @@ def emcalcon_disconnect(tn):
     tn.close()
 
 def emcalcon_voltage_one_crate(ip):
-   #connect to the snmp crate 
+   #connect to the snmp crate  
     getter = [prefix+'snmpwalk', 
         '-OqU', 
         '-v', 
@@ -191,7 +191,7 @@ def remap_bias(mpodbias):
     for i in mpodbias:
         for j in mpodbias[i]:
             sector,ib=ib_map(i,j)
-            bias[sector][ib]=-1*mpodbias[i][j] # this is to get the sign correct 
+            bias[sector][ib]=-1*mpodbias[i][j] # this is to get the sign correct
     return bias
 
 def ib_map(ip, channel_j):
@@ -226,7 +226,7 @@ def channel_index(mod_ch_num):
     module=int(module)
     channel=(int(mod_ch_num) % 100 ) % 8 
     index=channel+8*module
-    print(str(mod_ch_num)+" index: " + str(index))
+    #print(str(mod_ch_num)+" index: " + str(index))
     return index
 
 def emcalcon_setgain(tn, whichgain):
@@ -387,6 +387,9 @@ def update_status(sector_status, ib_status, delay, busy, gains, nSectors=64, nIB
             ib_status[50][1].config(background='gray')
             ib_status[4][1].config(background='gray')
             ib_status[25][2].config(background='gray')
+            # Additional bad ib boards in Run 25
+            ib_status[54][4].config(background='gray')
+            ib_status[10][3].config(background='gray')
             busy[0] = False
         else:
             print('Currently busy')
