@@ -38,7 +38,7 @@ def get_bias_status():
                     FROM
                     emcal_mpodlog
                     WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2))
+                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2) or (sector = 54 and ib = 4) or (sector = 10 and ib = 3))
                     ORDER BY readtime desc, sector, ib'''
 
             df = pd.read_sql_query(sql, conn)
@@ -57,7 +57,7 @@ def get_lv_status():
                     FROM
                     emcal_iface
                     WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2))
+                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2) or (sector = 54 and ib = 4) or (sector = 10 and ib = 3))
                     ORDER BY readtime desc, sector, ib'''
 
             df = pd.read_sql_query(sql, conn)
@@ -73,7 +73,7 @@ def update_status(bias_label, lv_label, delay):
         df_bias = get_bias_status()
 
         if(df_bias.empty):
-                bias_label.config(text='Bias Voltage \n No DB Connection \n Check Bias GUI', background='blue')
+                bias_label.config(text='Bias Voltage \n No DB Connection \n Check Bias GUI', foreground='white', background='blue')
         else:
             off_counts = (df_bias['vmeas'].abs() < threshold).sum()
             total      = df_bias.index.size
@@ -93,7 +93,7 @@ def update_status(bias_label, lv_label, delay):
         df_lv = get_lv_status()
 
         if(df_lv.empty):
-            lv_label.config(text='Low Voltage \n No DB Connection \n Check Low Voltage GUI', background='blue')
+            lv_label.config(text='Low Voltage \n No DB Connection \n Check Low Voltage GUI', foreground='white', background='blue')
         else:
             off_counts = ((df_lv['vp'] < 5) | (df_lv['vp'] >= 7) | (df_lv['vn'] < -7) | (df_lv['vn'] >= -5)).sum()
             total      = df_lv.index.size
