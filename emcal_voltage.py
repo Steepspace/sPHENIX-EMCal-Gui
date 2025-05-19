@@ -38,7 +38,7 @@ def get_bias_status():
                     FROM
                     emcal_mpodlog
                     WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2) or (sector = 54 and ib = 4) or (sector = 10 and ib = 3))
+                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2) or (sector = 54 and ib = 4) or (sector = 10 and ib = 3) or (sector = 10 and ib = 5))
                     ORDER BY readtime desc, sector, ib'''
 
             df = pd.read_sql_query(sql, conn)
@@ -57,7 +57,7 @@ def get_lv_status():
                     FROM
                     emcal_iface
                     WHERE readtime > (CURRENT_TIMESTAMP-INTERVAL '00:02:00')
-                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2) or (sector = 54 and ib = 4) or (sector = 10 and ib = 3))
+                    and not ((sector = 50 and ib = 1) or (sector = 4 and ib = 1) or (sector = 25 and ib = 2) or (sector = 54 and ib = 4) or (sector = 10 and ib = 3) or (sector = 10 and ib = 5))
                     ORDER BY readtime desc, sector, ib'''
 
             df = pd.read_sql_query(sql, conn)
