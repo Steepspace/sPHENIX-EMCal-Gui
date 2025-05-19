@@ -123,10 +123,6 @@ controller_ip = {
       56: '10.20.34.41' },
 }
 
-all_controller_ip = {}
-for controller_dict in controller_ip.values():
-    all_controller_ip.update(controller_dict)
-
 def emcalcon_voltage_one_crate(ip):
     """
     Get the EMCal Bias Voltage given an ip of crate.
@@ -334,6 +330,7 @@ def initGui():
         sector.grid(row=i//16, column=i%16, padx=2, pady=2, sticky='EW')
         sector_title = ttk.Label(sector, text=f'S {i}')
         sector_title.grid(row=0, column=0, sticky='EW')
+        sector_title.config(background='green3')
         sector_status.append(sector_title)
         ib_arr = []
         for j in range(nIBs):
