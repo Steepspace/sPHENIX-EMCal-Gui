@@ -274,6 +274,7 @@ def update_status(ib_status, delay, busy, verbose, nSectors=64, nIBs=6):
             # Additional bad ib boards in Run 25
             ib_status[54][4].config(background='gray')
             ib_status[10][3].config(background='gray')
+            ib_status[10][5].config(background='gray')
             busy[0] = False
         else:
             print('Currently busy')
@@ -376,11 +377,11 @@ def initGui():
     bias_legend_title.grid(row=len(legend_map)+7, column=0, columnspan=2, sticky='NS')
 
     # create button to turn ON bias voltage
-    button2 = ttk.Button(legend, text='Bias Voltage ON', command=bias_voltage_on())
+    button2 = ttk.Button(legend, text='Bias Voltage ON', command=bias_voltage_on)
     button2.grid(row=len(legend_map)+8, column=0, columnspan=2, sticky='EW')
 
     # create button to turn OFF bias voltage
-    button3 = ttk.Button(legend, text='Bias Voltage OFF', command=bias_voltage_off())
+    button3 = ttk.Button(legend, text='Bias Voltage OFF', command=bias_voltage_off)
     button3.grid(row=len(legend_map)+9, column=0, columnspan=2, sticky='EW')
 
     # create a separate thread which will execute the update_status at the given delay
