@@ -275,6 +275,7 @@ def update_status(ib_status, delay, busy, verbose, nSectors=64, nIBs=6):
             ib_status[54][4].config(background='gray')
             ib_status[10][3].config(background='gray')
             ib_status[10][5].config(background='gray')
+            ib_status[60][4].config(background='gray')
             busy[0] = False
         else:
             print('Currently busy')
